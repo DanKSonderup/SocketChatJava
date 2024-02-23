@@ -13,3 +13,5 @@ I've used Threads to handle all the streams between the client and server so tha
 Using an Observer Pattern I've tried to keep the 3-layer clean architecthure by letting the lower layers notify the GUI once new data has been received over the socket.
 
 The code has not been optimized and will contain room for improvement, regardless please feel free to take a look to get an insight to some of my programming abilities regarding Sockets, Threads and Observer Pattern
+
+![Screenshot1](https://github.com/DanKSonderup/SocketChatJava/blob/main/SocketChatsh1.png)
