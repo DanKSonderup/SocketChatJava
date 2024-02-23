@@ -16,6 +16,8 @@ public class ServerController {
     private Thread serverThread;
     private DataOutputStream outToClient;
     private BufferedReader inFromClient;
+    private String receiverName;
+
 
     public ServerController(int serverPort) {
         try {
@@ -51,17 +53,16 @@ public class ServerController {
         }
     }
     public void acceptRequest(String answer) throws IOException {
-
         inFromClient = new BufferedReader(new InputStreamReader(connectionSocket.getInputStream()));
-        // String clientResponse = inFromClient.readLine();
+        String clientResponse = inFromClient.readLine();
         outToClient = new DataOutputStream(connectionSocket.getOutputStream());
-
+        receiverName = clientResponse.split(" ")[1];
         if (answer.equals("Ja")) {
-            outToClient.writeBytes("Ja" + '\n');
-            notifyObservers("ConnectAccept(true) -Svar sendt, afvent første besked fra forespørger \n");
+            outToClient.writeBytes("Ja" + "\n");
+            notifyObservers("ConnectAccept(true) -Svar sendt, du kan nu begynde at chatte \n");
         } else if (answer.equals("Nej")){
             notifyObservers("ConnectAccept(false) -Anmodning afvist");
-            outToClient.writeBytes("Nej" + '\n');
+            outToClient.writeBytes("Nej" + "\n");
         } else {
             notifyObservers("ConnectAccept(false) -Ugyldig kommando, anmodning afvist");
         }
@@ -75,7 +76,7 @@ public class ServerController {
                     while (clientResponse.isEmpty()) {
                         clientResponse = inFromClient.readLine();
                     }
-                    notifyObservers("Message -Anden person: " + clientResponse);
+                    notifyObservers("Message -" + receiverName + ": " + clientResponse);
                 }
             } catch (IOException e) {
                 e.printStackTrace();
@@ -86,7 +87,11 @@ public class ServerController {
 
     public void handleSenderMessage(String senderMessage, boolean send) throws IOException {
         if (send) {
-        outToClient.writeBytes(senderMessage + '\n');
+        outToClient.writeBytes(senderMessage + "\n");
         }
+    }
+
+    public int getPort() {
+        return serverSocket.getLocalPort();
     }
 }

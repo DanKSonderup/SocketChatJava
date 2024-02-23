@@ -23,16 +23,40 @@ public class ClientController {
         }
     }
 
-    public void sendChatRequest() {
-        Thread requestThread = new Thread(() -> {
+    public void requestNameServer(String serverName) {
+        final String[] serverNameArray = {serverName};
+        // Thread nameServerThread = new Thread(() -> {
+            String serverResponse = "";
+            try {
+                outToServer = new DataOutputStream(clientSocket.getOutputStream());
+                inFromServer = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
+                outToServer.writeBytes("serverRequest-" + serverNameArray[0] + '\n');
+                while (serverResponse.isEmpty()) {
+                    serverResponse = inFromServer.readLine();
+                }
+                notifyObservers("NameServer -" + serverResponse);
+                outToServer.close();
+                inFromServer.close();
+                clientSocket.close();
+            } catch (IOException e) {
+                System.out.println(e);
+            }
+
+        // });
+        // nameServerThread.start();
+    }
+    public void sendChatRequest(String name) {
+        // Thread requestThread = new Thread(() -> {
             String serverResponse = "";
             String chatRequest = "Snakke Oliver";
             try {
                 outToServer = new DataOutputStream(clientSocket.getOutputStream());
                 inFromServer = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
                 outToServer.writeBytes(chatRequest + '\n');
+                System.out.println("Kommer hertil");
                 while (serverResponse.isEmpty()) {
-                    serverResponse = inFromServer.readLine();
+                serverResponse = inFromServer.readLine();
+                System.out.println("Kommer videre");
                 }
                 notifyObservers("Message -Anden person: " + serverResponse);
             } catch (IOException e) {
@@ -48,8 +72,8 @@ public class ClientController {
                     System.out.println(e);
                 }
             }
-        });
-        requestThread.start();
+        // });
+        // requestThread.start();
     }
     public void handleReceiverMessages() {
         Thread messageThread = new Thread(() -> {
@@ -83,5 +107,15 @@ public class ClientController {
         for (Observer ob: observers) {
             ob.update(contentOfUpdate);
         }
+    }
+
+    public void closeNameServerClient() {
+        try {
+            clientSocket.close();
+            outToServer.close();
+        } catch (IOException e) {
+
+        }
+
     }
 }

@@ -11,6 +11,7 @@ import javafx.scene.input.KeyCode;
 import javafx.scene.layout.GridPane;
 import javafx.stage.Stage;
 import peer2peergui.controller.ClientController;
+import peer2peergui.controller.NameServerController;
 import peer2peergui.controller.Observer;
 import peer2peergui.controller.ServerController;
 
@@ -19,8 +20,10 @@ import java.io.IOException;
 public class Gui1 extends Application implements Observer {
 
     private final ServerController serverController = new ServerController(6969);
-
+    private ClientController nameServerClientController;
+    private NameServerController nameServerController;
     private ClientController clientController;
+    private String userName;
 
     @Override
     public void start(Stage stage) {
@@ -42,10 +45,10 @@ public class Gui1 extends Application implements Observer {
     private final TextArea chatWindow = new TextArea();
     private final TextField txfInput = new TextField();
     private final Button btnSend = new Button("Send");
-    private boolean isClient = false;
 
-    // ConnectRequest, ConnectAccept, CanSend
-    private boolean[] actionState = {false, false, false};
+    // ConnectRequest, CanSend, Client Requesting Server, Inserting name
+    // Some checks have been implemented later, hence the inorder logic
+    private boolean[] actionState = {false, false, false, true};
 
     private void initContent(GridPane pane) {
         // show or hide grid lines
@@ -74,11 +77,9 @@ public class Gui1 extends Application implements Observer {
 
         btnSend.setOnAction(event -> this.sendAction());
 
-        String welcome = "Velkommen til chatprogrammet " +
-                "\nHvis du ønsker at starte en chat samtale tast 'c'" +
-                "\nHvis du vil have en besked fra en anden, " +
-                "så afvent en forespørgsel\n";
-        chatWindow.setText(welcome);
+        String typeInName = "Velkommen til chatprogrammet, venligst indtast dit navn: \n";
+
+        chatWindow.setText(typeInName);
     }
 
     @Override
@@ -88,23 +89,31 @@ public class Gui1 extends Application implements Observer {
         String typeOfAction = controllerAnswer[0];
         String message = controllerAnswer[1];
 
+
+        if (typeOfAction.contains("NameServer")) {
+                System.out.println("NameServer responded");
+                String hostIP = message.split(",")[0];
+                int port = Integer.parseInt(message.split(",")[1]);
+                System.out.println("IP: " + hostIP + ", port: " + port);
+                clientController = new ClientController(hostIP,port);
+                clientController.sendChatRequest(userName);
+        }
+
         if(clientController != null) {
             if (typeOfAction.contains("ConnectAccept")) {
                 if (typeOfAction.contains("true")) {
                     actionState[1] = true;
-                    actionState[2] = true;
                 }
                 chatWindow.setText(currentText + message + "\n");
                 clientController.handleReceiverMessages();
             }
             if (typeOfAction.contains("Message")) {
                 chatWindow.setText(currentText + message + "\n");
-                actionState[2] = true;
             }
+
             chatWindow.appendText("");
             return;
         }
-
         if (typeOfAction.contains("ConnectRequestMessage")) {
             chatWindow.setText(currentText + message + "\n");
         }
@@ -115,14 +124,12 @@ public class Gui1 extends Application implements Observer {
         if (typeOfAction.contains("ConnectAccept")) {
             if(typeOfAction.contains("true")) {
                 actionState[1] = true;
-                actionState[2] = true;
             }
             chatWindow.setText(currentText + message + "\n");
             serverController.handleReceiverMessages();
         }
         if (typeOfAction.contains("Message")) {
             chatWindow.setText(currentText + message + "\n");
-            actionState[2] = true;
         }
         chatWindow.appendText("");
     }
@@ -130,37 +137,56 @@ public class Gui1 extends Application implements Observer {
     public void sendAction() {
         String inputText = txfInput.getText();
         String currentText = chatWindow.getText();
+
+        if (actionState[3]) {
+            userName = inputText;
+            nameServerController = new NameServerController("localhost", 6972);
+            String welcome = "Mit navn: " + userName + "\n" + "Hvis du ønsker at starte en chat samtale tast 'c'" +
+                    "\nHvis du vil have en besked fra en anden, " +
+                    "så afvent en forespørgsel\n";
+            chatWindow.setText(currentText + welcome + "\n");
+            nameServerController.addToNameServer(inputText, "localhost", 6969);
+            actionState[3] = false;
+        }
         if (inputText.equals("c")) {
-            chatWindow.setText(currentText + "Forespørger modtager om forbindelse" + "\n");
-            clientController = new ClientController("localhost", 6970);
-            clientController.sendChatRequest();
+            chatWindow.setText(currentText + "Indtast navnet på den du gerne vil snakke med:" + "\n");
+            actionState[2] = true;
             txfInput.clear();
             chatWindow.appendText("");
             return;
         }
 
+        if (actionState[2]) {
+            chatWindow.setText(currentText + inputText + "\n");
+            if (nameServerClientController == null) {
+                nameServerClientController = new ClientController("localhost", 6972);
+            }
+            nameServerClientController.requestNameServer(inputText);
+            actionState[2] = false;
+        }
+
         if(actionState[0]) {
             try {
                 serverController.acceptRequest(inputText);
-                serverController.handleSenderMessage("", actionState[2]);
+                serverController.handleSenderMessage("", actionState[1]);
                 actionState[0] = false;
             } catch (IOException e) {
                 chatWindow.setText(currentText + "En fejl opstod");
             }
-        } else if (actionState[2]) {
+        } else if (actionState[1]) {
             String message = txfInput.getText();
             try {
                 if (clientController != null) {
-                    clientController.handleSenderMessage(message, actionState[2]);
+                    clientController.handleSenderMessage(message, actionState[1]);
                 } else {
-                    serverController.handleSenderMessage(message, actionState[2]);
+                    serverController.handleSenderMessage(message, actionState[1]);
                 }
                 chatWindow.setText(currentText + "Mig: " + inputText + "\n");
             } catch (IOException e) {
                 chatWindow.setText(currentText + "En fejl opstod");
             }
-            actionState[2] = false;
         }
+
         chatWindow.appendText("");
         txfInput.clear();
     }
