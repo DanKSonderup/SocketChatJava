@@ -14,8 +14,12 @@ public class ClientController {
     private Socket clientSocket;
     private DataOutputStream outToServer;
     private BufferedReader inFromServer;
+    private String host;
+    private int port;
 
     public ClientController(String host, int clientPort) {
+        this.host = host;
+        this.port = clientPort;
         try {
             clientSocket = new Socket(host, clientPort);
         } catch (IOException e) {
@@ -25,7 +29,7 @@ public class ClientController {
 
     public void requestNameServer(String serverName) {
         final String[] serverNameArray = {serverName};
-        // Thread nameServerThread = new Thread(() -> {
+        Thread nameServerThread = new Thread(() -> {
             String serverResponse = "";
             try {
                 outToServer = new DataOutputStream(clientSocket.getOutputStream());
@@ -35,18 +39,18 @@ public class ClientController {
                     serverResponse = inFromServer.readLine();
                 }
                 notifyObservers("NameServer -" + serverResponse);
-                outToServer.close();
-                inFromServer.close();
-                clientSocket.close();
+                // outToServer.close();
+                // inFromServer.close();
+                // clientSocket.close();
             } catch (IOException e) {
                 System.out.println(e);
             }
 
-        // });
-        // nameServerThread.start();
+        });
+        nameServerThread.start();
     }
     public void sendChatRequest(String name) {
-        // Thread requestThread = new Thread(() -> {
+        Thread requestThread = new Thread(() -> {
             String serverResponse = "";
             String chatRequest = "Snakke Oliver";
             try {
@@ -72,17 +76,20 @@ public class ClientController {
                     System.out.println(e);
                 }
             }
-        // });
-        // requestThread.start();
+        });
+        requestThread.start();
     }
     public void handleReceiverMessages() {
         Thread messageThread = new Thread(() -> {
             try {
+                outToServer = new DataOutputStream(clientSocket.getOutputStream());
+                inFromServer = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
                 while (true) {
                     String serverResponse = "";
                     while (serverResponse.isEmpty()) {
                         serverResponse = inFromServer.readLine();
                     }
+                    System.out.println("Client har modtaget: " + serverResponse);
                     notifyObservers("Message -Anden person: " + serverResponse);
                 }
             } catch (IOException e) {
@@ -109,13 +116,11 @@ public class ClientController {
         }
     }
 
-    public void closeNameServerClient() {
-        try {
-            clientSocket.close();
-            outToServer.close();
-        } catch (IOException e) {
+    public void setHostName() {
 
-        }
+    }
 
+    public synchronized void setPort(int port) {
+        this.port = port;
     }
 }

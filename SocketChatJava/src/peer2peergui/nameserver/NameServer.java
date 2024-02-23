@@ -33,10 +33,7 @@ public class NameServer {
         }
 
         public void run() {
-            System.out.println("Thread running");
             try {
-                    System.out.println("Connection established");
-
                     inFromClient = new BufferedReader(new InputStreamReader(connectionSocket.getInputStream()));
                     outToClient = new DataOutputStream(connectionSocket.getOutputStream());
 
@@ -66,6 +63,7 @@ public class NameServer {
 
         private static String sendHostAndPortToRequester(String requestedServer) {
             Host host = servers.get(requestedServer);
+            System.out.println("" + host.getHostIp() + "," + host.getServerPort());
             return "" + host.getHostIp() + "," + host.getServerPort();
         }
     }

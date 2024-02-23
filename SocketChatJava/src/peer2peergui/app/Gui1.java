@@ -10,18 +10,15 @@ import javafx.scene.control.TextField;
 import javafx.scene.input.KeyCode;
 import javafx.scene.layout.GridPane;
 import javafx.stage.Stage;
-import peer2peergui.controller.ClientController;
-import peer2peergui.controller.NameServerController;
-import peer2peergui.controller.Observer;
-import peer2peergui.controller.ServerController;
+import peer2peergui.controller.*;
 
 import java.io.IOException;
 
 public class Gui1 extends Application implements Observer {
 
     private final ServerController serverController = new ServerController(6969);
-    private ClientController nameServerClientController;
-    private NameServerController nameServerController;
+    // private NameServerRequester nameServerRequester;
+    // private NameServerSubscriber nameServerSubscriber;
     private ClientController clientController;
     private String userName;
 
@@ -38,9 +35,10 @@ public class Gui1 extends Application implements Observer {
 
     @Override
     public void init() {
+        clientController = new ClientController("localhost", 6972);
+        // NameServerRequester.addObserver(this);
         ClientController.addObserver(this);
         ServerController.addObserver(this);
-        serverController.startServer();
     }
     private final TextArea chatWindow = new TextArea();
     private final TextField txfInput = new TextField();
@@ -95,6 +93,7 @@ public class Gui1 extends Application implements Observer {
                 String hostIP = message.split(",")[0];
                 int port = Integer.parseInt(message.split(",")[1]);
                 System.out.println("IP: " + hostIP + ", port: " + port);
+
                 clientController = new ClientController(hostIP,port);
                 clientController.sendChatRequest(userName);
         }
@@ -112,7 +111,6 @@ public class Gui1 extends Application implements Observer {
             }
 
             chatWindow.appendText("");
-            return;
         }
         if (typeOfAction.contains("ConnectRequestMessage")) {
             chatWindow.setText(currentText + message + "\n");
@@ -140,13 +138,13 @@ public class Gui1 extends Application implements Observer {
 
         if (actionState[3]) {
             userName = inputText;
-            nameServerController = new NameServerController("localhost", 6972);
             String welcome = "Mit navn: " + userName + "\n" + "Hvis du ønsker at starte en chat samtale tast 'c'" +
                     "\nHvis du vil have en besked fra en anden, " +
                     "så afvent en forespørgsel\n";
             chatWindow.setText(currentText + welcome + "\n");
-            nameServerController.addToNameServer(inputText, "localhost", 6969);
+            serverController.addToNameServer(inputText, "localhost", 6969);
             actionState[3] = false;
+            serverController.startServer();
         }
         if (inputText.equals("c")) {
             chatWindow.setText(currentText + "Indtast navnet på den du gerne vil snakke med:" + "\n");
@@ -158,10 +156,7 @@ public class Gui1 extends Application implements Observer {
 
         if (actionState[2]) {
             chatWindow.setText(currentText + inputText + "\n");
-            if (nameServerClientController == null) {
-                nameServerClientController = new ClientController("localhost", 6972);
-            }
-            nameServerClientController.requestNameServer(inputText);
+            clientController.requestNameServer(inputText);
             actionState[2] = false;
         }
 
@@ -170,6 +165,7 @@ public class Gui1 extends Application implements Observer {
                 serverController.acceptRequest(inputText);
                 serverController.handleSenderMessage("", actionState[1]);
                 actionState[0] = false;
+                clientController = null;
             } catch (IOException e) {
                 chatWindow.setText(currentText + "En fejl opstod");
             }
